@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\LoginRequest;
 use App\Http\Requests\PostRequest;
 use App\Http\Resources\PostResource;
 use App\Models\Post;
@@ -23,11 +24,20 @@ class PostController extends Controller
      */
     public function index(): JsonResponse
     {
-        $post = Post::with('user')->latest()->paginate(10);
+        try {
 
-        return response()->json(
-            PostResource::collection($post)->response()->getData(true)
-        );
+            $post = Post::with('user')->latest()->paginate(10);
+
+            return response()->json(
+                PostResource::collection($post)->response()->getData(true)
+            );
+            //code...
+        } catch (\Throwable $th) {
+            return response()->json([
+                "status" => false,
+                "message" => "Gagal menampilkan post",
+            ], 400);
+        }
     }
 
     /**
@@ -36,12 +46,6 @@ class PostController extends Controller
     public function store(PostRequest $request): JsonResponse
     {
         try {
-            if (!auth()->check()) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Anda harus login terlebih dahulu',
-                ], 401);
-            }
 
             $data = $request->validated();
             $data['user_id'] = auth()->id();
@@ -58,7 +62,7 @@ class PostController extends Controller
             return response()->json([
                 "status" => false,
                 "message" => "Post gagal disimpan!",
-            ], 500);
+            ], 400);
         }
 
     }
@@ -76,7 +80,8 @@ class PostController extends Controller
      */
     public function update(PostRequest $request, Post $post): JsonResponse
     {
-        $this->authorize('update', $post);
+        // $this->authorize('update', $post);
+        LoginRequest::authorize();
 
         $data = $request->validated();
         $updated = $this->postService->update($post, $data);
